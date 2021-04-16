@@ -1,3 +1,7 @@
+Modification of [transfer.sh](https://github.com/dutchcoders/transfer.sh/) | Many thanks to the upstream developers!
+
+This fork modifies the server to try to remove all of the html/generic web-based views/pages as well as inlining content by default.
+
 # transfer.sh [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/dutchcoders/transfer.sh?utm_source=badge&utm_medium=badge&utm_campaign=&utm_campaign=pr-badge&utm_content=badge) [![Go Report Card](https://goreportcard.com/badge/github.com/dutchcoders/transfer.sh)](https://goreportcard.com/report/github.com/dutchcoders/transfer.sh) [![Docker pulls](https://img.shields.io/docker/pulls/dutchcoders/transfer.sh.svg)](https://hub.docker.com/r/dutchcoders/transfer.sh/) [![Build Status](https://github.com/dutchcoders/transfer.sh/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/dutchcoders/transfer.sh/actions/workflows/test.yml?query=branch%3Amaster)
 
 Easy and fast file sharing from the command-line. This code contains the server with everything you need to create your own instance.

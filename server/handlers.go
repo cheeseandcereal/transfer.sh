@@ -528,7 +528,7 @@ func (s *Server) putHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("X-Url-Delete", resolveURL(r, deleteURL, s.proxyPort))
 
-	fmt.Fprint(w, resolveURL(r, relativeURL, s.proxyPort))
+	fmt.Fprintln(w, resolveURL(r, relativeURL, s.proxyPort))
 }
 
 func resolveURL(r *http.Request, u *url.URL, proxyPort string) string {
@@ -979,7 +979,6 @@ func (s *Server) headHandler(w http.ResponseWriter, r *http.Request) {
 func (s *Server) getHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	action := vars["action"]
 	token := vars["token"]
 	filename := vars["filename"]
 
@@ -1004,13 +1003,7 @@ func (s *Server) getHandler(w http.ResponseWriter, r *http.Request) {
 
 	defer reader.Close()
 
-	var disposition string
-
-	if action == "inline" {
-		disposition = "inline"
-	} else {
-		disposition = "attachment"
-	}
+	disposition := "inline"
 
 	remainingDownloads, remainingDays := metadata.remainingLimitHeaderValues()
 
@@ -1087,9 +1080,6 @@ func (s *Server) RedirectHandler(h http.Handler) http.HandlerFunc {
 // Create a log handler for every request it receives.
 func LoveHandler(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("x-made-with", "<3 by DutchCoders")
-		w.Header().Set("x-served-by", "Proudly served by DutchCoders")
-		w.Header().Set("Server", "Transfer.sh HTTP Server 1.0")
 		h.ServeHTTP(w, r)
 	}
 }
