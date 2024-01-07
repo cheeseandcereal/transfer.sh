@@ -35,7 +35,6 @@ import (
 	"mime"
 	"net/http"
 	_ "net/http/pprof"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -52,9 +51,7 @@ import (
 	"github.com/tg123/go-htpasswd"
 	"golang.org/x/crypto/acme/autocert"
 
-	web "github.com/dutchcoders/transfer.sh-web"
 	"github.com/dutchcoders/transfer.sh/server/storage"
-	assetfs "github.com/elazarl/go-bindata-assetfs"
 )
 
 // parse request with maximum memory of _24Kilobits
@@ -426,87 +423,11 @@ func (s *Server) Run() {
 
 	r := mux.NewRouter()
 
-	var fs http.FileSystem
-
-	if s.webPath != "" {
-		s.logger.Println("Using static file path: ", s.webPath)
-
-		fs = http.Dir(s.webPath)
-
-		htmlTemplates, _ = htmlTemplates.ParseGlob(s.webPath + "*.html")
-		textTemplates, _ = textTemplates.ParseGlob(s.webPath + "*.txt")
-	} else {
-		fs = &assetfs.AssetFS{
-			Asset:    web.Asset,
-			AssetDir: web.AssetDir,
-			AssetInfo: func(path string) (os.FileInfo, error) {
-				return os.Stat(path)
-			},
-			Prefix: web.Prefix,
-		}
-
-		for _, path := range web.AssetNames() {
-			bytes, err := web.Asset(path)
-			if err != nil {
-				s.logger.Panicf("Unable to parse: path=%s, err=%s", path, err)
-			}
-
-			if strings.HasSuffix(path, ".html") {
-				_, err = htmlTemplates.New(stripPrefix(path)).Parse(string(bytes))
-				if err != nil {
-					s.logger.Println("Unable to parse html template", err)
-				}
-			}
-			if strings.HasSuffix(path, ".txt") {
-				_, err = textTemplates.New(stripPrefix(path)).Parse(string(bytes))
-				if err != nil {
-					s.logger.Println("Unable to parse text template", err)
-				}
-			}
-		}
-	}
-
-	staticHandler := http.FileServer(fs)
-
-	r.PathPrefix("/images/").Handler(staticHandler).Methods("GET")
-	r.PathPrefix("/styles/").Handler(staticHandler).Methods("GET")
-	r.PathPrefix("/scripts/").Handler(staticHandler).Methods("GET")
-	r.PathPrefix("/fonts/").Handler(staticHandler).Methods("GET")
-	r.PathPrefix("/ico/").Handler(staticHandler).Methods("GET")
-	r.HandleFunc("/favicon.ico", staticHandler.ServeHTTP).Methods("GET")
-	r.HandleFunc("/robots.txt", staticHandler.ServeHTTP).Methods("GET")
-
-	r.HandleFunc("/{filename:(?:favicon\\.ico|robots\\.txt|health\\.html)}", s.basicAuthHandler(http.HandlerFunc(s.putHandler))).Methods("PUT")
-
-	r.HandleFunc("/health.html", healthHandler).Methods("GET")
-	r.HandleFunc("/", s.viewHandler).Methods("GET")
-
 	r.HandleFunc("/({files:.*}).zip", s.zipHandler).Methods("GET")
 	r.HandleFunc("/({files:.*}).tar", s.tarHandler).Methods("GET")
 	r.HandleFunc("/({files:.*}).tar.gz", s.tarGzHandler).Methods("GET")
 
 	r.HandleFunc("/{token}/{filename}", s.headHandler).Methods("HEAD")
-	r.HandleFunc("/{action:(?:download|get|inline)}/{token}/{filename}", s.headHandler).Methods("HEAD")
-
-	r.HandleFunc("/{token}/{filename}", s.previewHandler).MatcherFunc(func(r *http.Request, rm *mux.RouteMatch) (match bool) {
-		// The file will show a preview page when opening the link in browser directly or
-		// from external link. If the referer url path and current path are the same it will be
-		// downloaded.
-		if !acceptsHTML(r.Header) {
-			return false
-		}
-
-		match = r.Referer() == ""
-
-		u, err := url.Parse(r.Referer())
-		if err != nil {
-			s.logger.Fatal(err)
-			return
-		}
-
-		match = match || (u.Path != r.URL.Path)
-		return
-	}).Methods("GET")
 
 	getHandlerFn := s.getHandler
 	if s.rateLimitRequests > 0 {
@@ -514,16 +435,7 @@ func (s *Server) Run() {
 	}
 
 	r.HandleFunc("/{token}/{filename}", getHandlerFn).Methods("GET")
-	r.HandleFunc("/{action:(?:download|get|inline)}/{token}/{filename}", getHandlerFn).Methods("GET")
-
-	r.HandleFunc("/{filename}/virustotal", s.virusTotalHandler).Methods("PUT")
-	r.HandleFunc("/{filename}/scan", s.scanHandler).Methods("PUT")
-	r.HandleFunc("/put/{filename}", s.basicAuthHandler(http.HandlerFunc(s.putHandler))).Methods("PUT")
-	r.HandleFunc("/upload/{filename}", s.basicAuthHandler(http.HandlerFunc(s.putHandler))).Methods("PUT")
 	r.HandleFunc("/{filename}", s.basicAuthHandler(http.HandlerFunc(s.putHandler))).Methods("PUT")
-	r.HandleFunc("/", s.basicAuthHandler(http.HandlerFunc(s.postHandler))).Methods("POST")
-	// r.HandleFunc("/{page}", viewHandler).Methods("GET")
-
 	r.HandleFunc("/{token}/{filename}/{deletionToken}", s.deleteHandler).Methods("DELETE")
 
 	r.NotFoundHandler = http.HandlerFunc(s.notFoundHandler)
